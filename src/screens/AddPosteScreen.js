@@ -3,6 +3,7 @@ import { View, Text, TextInput, Button, Alert, StyleSheet, Image, TouchableOpaci
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
+import * as utm from 'utm';  // Importa a biblioteca de conversão
 import * as ImagePicker from 'expo-image-picker';  // Para captura de imagem
 import RNPickerSelect from 'react-native-picker-select';  // Dropdown para Cidade e Bairro
 import * as ImageManipulator from 'expo-image-manipulator';
@@ -57,22 +58,32 @@ const AddPosteScreen = ({ navigation }) => {
     }
   };
 
+  
   const getLocation = async () => {
-    let { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Erro', 'Permissão para acessar a localização foi negada.');
-      return;
-    }
-
-    let location = await Location.getCurrentPositionAsync({});
-    const { latitude, longitude } = location.coords;
-
-    const zonautm = 23;
-    const localizacao_utm_x = longitude;
-    const localizacao_utm_y = latitude;
-
-    setLocalizacaoUTM({ zonautm, localizacao_utm_x, localizacao_utm_y });
+      // Solicita permissão de localização
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+          Alert.alert('Erro', 'Permissão para acessar a localização foi negada.');
+          return;
+      }
+  
+      // Obtém a posição atual
+      let location = await Location.getCurrentPositionAsync({});
+      const { latitude, longitude } = location.coords;
+  
+      // Converte latitude e longitude para UTM
+      const { easting, northing, zoneNum, zoneLetter } = utm.fromLatLon(latitude, longitude);
+  
+      // Define o valor de localização UTM
+      const localizacaoUTM = {
+          zonautm: zoneNum,         // Zona UTM
+          localizacao_utm_x: easting,    // Coordenada X em UTM (Easting)
+          localizacao_utm_y: northing    // Coordenada Y em UTM (Northing)
+      };
+  
+      setLocalizacaoUTM(localizacaoUTM);
   };
+  
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -85,7 +96,7 @@ const AddPosteScreen = ({ navigation }) => {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
-      quality: 0.1, // Reduzir a qualidade para diminuir o tamanho do arquivo
+      quality: 0.5,
     });
    
   
