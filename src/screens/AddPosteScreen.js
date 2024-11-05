@@ -5,6 +5,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';  // Para captura de imagem
 import RNPickerSelect from 'react-native-picker-select';  // Dropdown para Cidade e Bairro
+import * as ImageManipulator from 'expo-image-manipulator';
+
 
 const AddPosteScreen = ({ navigation }) => {
   const [cidades, setCidades] = useState([]);
@@ -88,10 +90,15 @@ const AddPosteScreen = ({ navigation }) => {
    
   
     if (!result.canceled) {
-      console.log(result.assets[0].uri); // Verificar a URI da imagem capturada
-      setImage(result.assets[0].uri); // Atualizar o estado 'image' com a URI correta
-    } else {
-      console.log("Usuário cancelou a seleção da imagem");
+      // Redimensiona a imagem para uma largura menor (ex: 800px)
+      const resizedImage = await ImageManipulator.manipulateAsync(
+        result.assets[0].uri,
+        [{ resize: { width: 800 } }],
+        { compress: 0.5, format: ImageManipulator.SaveFormat.JPEG }
+      );
+      
+      console.log(resizedImage.uri); // Verificar URI da imagem redimensionada
+      setImage(resizedImage.uri);    // Usar a imagem redimensionada
     }
   };
   
