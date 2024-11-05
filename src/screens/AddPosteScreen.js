@@ -78,18 +78,25 @@ const AddPosteScreen = ({ navigation }) => {
       Alert.alert('Erro', 'Permissão para acessar a câmera foi negada.');
       return;
     }
-
+  
     let result = await ImagePicker.launchCameraAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
-      quality: 1,
+      quality: 0.1, // Reduzir a qualidade para diminuir o tamanho do arquivo
     });
-
-    if (!result.cancelled) {
-      setImage(result.uri);
+   
+  
+    if (!result.canceled) {
+      console.log(result.assets[0].uri); // Verificar a URI da imagem capturada
+      setImage(result.assets[0].uri); // Atualizar o estado 'image' com a URI correta
+    } else {
+      console.log("Usuário cancelou a seleção da imagem");
     }
   };
+  
+  
+  
 
   const handleAddPoste = async () => {
     const token = await AsyncStorage.getItem('accessToken');
@@ -101,17 +108,19 @@ const AddPosteScreen = ({ navigation }) => {
     formData.append('localizacao_utm_x', localizacaoUTM.localizacao_utm_x);
     formData.append('localizacao_utm_y', localizacaoUTM.localizacao_utm_y);
     formData.append('observacoes', observacoes);
+    
+    console.log(image);
   
     if (image) {
       const fileName = image.split('/').pop();
       const fileType = fileName.split('.').pop();
-  
       formData.append('foto', {
         uri: image,
         name: fileName,
         type: `image/${fileType}`,
       });
     }
+  
   
     console.log(formData);  // Verificar o conteúdo do FormData
   
