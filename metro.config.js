@@ -1,13 +1,6 @@
-/**
- * Metro configuration for React Native
- * https://github.com/facebook/react-native
- *
- * @format
- */
-module.exports = {
-    transformer: {},
-    resolver: {
-      sourceExts: ['js', 'json', 'ts', 'tsx', 'jsx']
-    }
-  };
-  
+// metro.config.js
+const { getDefaultConfig } = require('@react-native/metro-config');
+
+const config = getDefaultConfig(__dirname);
+
+module.exports = config;
