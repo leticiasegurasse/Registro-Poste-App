@@ -7,7 +7,10 @@ import * as utm from 'utm';  // Importa a biblioteca de conversão
 import * as ImagePicker from 'expo-image-picker';  // Para captura de imagem
 import RNPickerSelect from 'react-native-picker-select';  // Dropdown para Cidade e Bairro
 import * as ImageManipulator from 'expo-image-manipulator';
+import NetInfo from '@react-native-community/netinfo';
+import { db } from '../../database';
 
+console.log(db);
 
 const AddPosteScreen = ({ navigation }) => {
   const [cidades, setCidades] = useState([]);
@@ -22,6 +25,14 @@ const AddPosteScreen = ({ navigation }) => {
     fetchCidades();
     getLocation();
     requestPermissions();  // Solicita permissões
+
+    const unsubscribe = NetInfo.addEventListener(state => {
+      if (state.isConnected) {
+        syncPostes();
+      }
+    });
+  
+    return () => unsubscribe();
   }, []);
 
   const requestPermissions = async () => {
@@ -113,22 +124,50 @@ const AddPosteScreen = ({ navigation }) => {
     }
   };
   
+  // Função para salvar o poste no SQLite se estiver offline
+  const savePosteOffline = (data) => {
+    db.transaction(tx => {
+      tx.executeSql(
+        'INSERT INTO postes (cidade, bairro, zonautm, localizacao_utm_x, localizacao_utm_y, observacoes, fotoUri) values (?, ?, ?, ?, ?, ?, ?)',
+        [data.cidade, data.bairro, data.zonautm, data.localizacao_utm_x, data.localizacao_utm_y, data.observacoes, data.fotoUri],
+        (_, result) => console.log("Poste salvo offline com ID:", result.insertId),
+        (_, error) => console.error("Erro ao salvar poste offline:", error)
+      );
+    });
+  };
   
-  
-
-  const handleAddPoste = async () => {
+  // Função para enviar o poste para o servidor
+  const enviarPosteParaServidor = async (formData) => {
     const token = await AsyncStorage.getItem('accessToken');
+
+    try {
+      const response = await axios.post('http://104.236.241.235/api/postes/', formData, {
+        headers: {
+          Authorization: `Token ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      if (response.status === 201) {
+        Alert.alert('Sucesso', 'Poste adicionado com sucesso!');
+      }
+    } catch (error) {
+      console.error("Erro ao enviar poste:", error.response);
+      Alert.alert('Erro', 'Não foi possível adicionar o poste. Tente novamente.');
+    }
+  };
+
+  // Função principal para adicionar o poste
+  const handleAddPoste = async () => {
     const formData = new FormData();
-  
+    
     formData.append('cidade', cidade);
     formData.append('bairro', bairro);
     formData.append('zonautm', localizacaoUTM.zonautm);
     formData.append('localizacao_utm_x', localizacaoUTM.localizacao_utm_x);
     formData.append('localizacao_utm_y', localizacaoUTM.localizacao_utm_y);
     formData.append('observacoes', observacoes);
-    
-    console.log(image);
-  
+
     if (image) {
       const fileName = image.split('/').pop();
       const fileType = fileName.split('.').pop();
@@ -138,28 +177,68 @@ const AddPosteScreen = ({ navigation }) => {
         type: `image/${fileType}`,
       });
     }
-  
-  
-    console.log(formData);  // Verificar o conteúdo do FormData
-  
-    try {
-      const response = await axios.post('http://104.236.241.235/api/postes/', formData, {
-        headers: {
-          Authorization: `Token ${token}`,
-          'Content-Type': 'multipart/form-data',
-        },
+
+    // Verifica a conexão antes de enviar
+    const netInfo = await NetInfo.fetch();
+    if (netInfo.isConnected) {
+      await enviarPosteParaServidor(formData);
+    } else {
+      // Salva no SQLite se estiver offline
+      savePosteOffline({
+        cidade,
+        bairro,
+        zonautm: localizacaoUTM.zonautm,
+        localizacao_utm_x: localizacaoUTM.localizacao_utm_x,
+        localizacao_utm_y: localizacaoUTM.localizacao_utm_y,
+        observacoes,
+        fotoUri: image,
       });
-  
-      if (response.status === 201) {
-        Alert.alert('Sucesso', 'Poste adicionado com sucesso!');
-        navigation.goBack();
-      }
-    } catch (error) {
-      console.log(error.response);  // Verificar a resposta do erro
-      Alert.alert('Erro', 'Não foi possível adicionar o poste. Tente novamente.');
+      Alert.alert('Offline', 'Poste salvo offline. Será sincronizado automaticamente quando estiver online.');
     }
   };
   
+  // Função para sincronizar os dados offline com o servidor
+  const syncPostes = async () => {
+    db.transaction(tx => {
+      tx.executeSql('SELECT * FROM postes', [], (_, { rows }) => {
+        const postes = rows._array;
+        postes.forEach(async (poste) => {
+          const formData = new FormData();
+          formData.append('cidade', poste.cidade);
+          formData.append('bairro', poste.bairro);
+          formData.append('zonautm', poste.zonautm);
+          formData.append('localizacao_utm_x', poste.localizacao_utm_x);
+          formData.append('localizacao_utm_y', poste.localizacao_utm_y);
+          formData.append('observacoes', poste.observacoes);
+          
+          if (poste.fotoUri) {
+            const fileName = poste.fotoUri.split('/').pop();
+            const fileType = fileName.split('.').pop();
+            formData.append('foto', {
+              uri: poste.fotoUri,
+              name: fileName,
+              type: `image/${fileType}`,
+            });
+          }
+
+          try {
+            const response = await enviarPosteParaServidor(formData);
+            if (response && response.status === 201) {
+              // Remove do SQLite após o envio com sucesso
+              db.transaction(tx => {
+                tx.executeSql('DELETE FROM postes WHERE id = ?', [poste.id],
+                  () => console.log("Poste sincronizado e removido offline:", poste.id),
+                  (_, error) => console.error("Erro ao remover poste offline:", error)
+                );
+              });
+            }
+          } catch (error) {
+            console.error("Erro ao sincronizar poste:", error);
+          }
+        });
+      });
+    });
+  };
 
   return (
     <View style={styles.container}>
