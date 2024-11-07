@@ -1,10 +1,8 @@
 import * as SQLite from 'expo-sqlite';
 
-let db;
-
 // Função para abrir o banco de dados
 export const initializeDatabase = async () => {
-  db = await SQLite.openDatabaseAsync('postes.db');
+  const db = await SQLite.openDatabaseAsync('postes');
 
   // Inicializa a tabela
   await db.execAsync(`
@@ -24,6 +22,8 @@ export const initializeDatabase = async () => {
 
 // Função para salvar um poste offline
 export const savePosteOffline = async (dadosPoste) => {
+  const db = await SQLite.openDatabaseAsync('postes');
+
   await db.execAsync(
     `INSERT INTO postes (cidade, bairro, zonautm, localizacao_utm_x, localizacao_utm_y, observacoes, status_sync) 
     VALUES (?, ?, ?, ?, ?, ?, 0);`,
@@ -40,12 +40,16 @@ export const savePosteOffline = async (dadosPoste) => {
 
 // Função para recuperar postes offline para sincronização
 export const getOfflinePostes = async () => {
+  const db = await SQLite.openDatabaseAsync('postes');
+
   const result = await db.getAllAsync('SELECT * FROM postes WHERE status_sync = 0;');
   return result.rows;
 };
 
 // Função para marcar um poste como sincronizado
 export const markPosteAsSynced = async (id) => {
+  const db = await SQLite.openDatabaseAsync('postes');
+
   await db.execAsync(`UPDATE postes SET status_sync = 1 WHERE id = ?;`, [id]);
 };
 

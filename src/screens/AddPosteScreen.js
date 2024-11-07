@@ -8,9 +8,7 @@ import * as ImagePicker from 'expo-image-picker';  // Para captura de imagem
 import RNPickerSelect from 'react-native-picker-select';  // Dropdown para Cidade e Bairro
 import * as ImageManipulator from 'expo-image-manipulator';
 import NetInfo from '@react-native-community/netinfo';
-import { db } from '../../database';
-
-console.log(db);
+import * as SQLite from 'expo-sqlite';
 
 const AddPosteScreen = ({ navigation }) => {
   const [cidades, setCidades] = useState([]);
@@ -125,7 +123,9 @@ const AddPosteScreen = ({ navigation }) => {
   };
   
   // Função para salvar o poste no SQLite se estiver offline
-  const savePosteOffline = (data) => {
+  const savePosteOffline = async (data) => {
+    const db = await SQLite.openDatabaseAsync('postes');
+
     db.transaction(tx => {
       tx.executeSql(
         'INSERT INTO postes (cidade, bairro, zonautm, localizacao_utm_x, localizacao_utm_y, observacoes, fotoUri) values (?, ?, ?, ?, ?, ?, ?)',
@@ -199,46 +199,48 @@ const AddPosteScreen = ({ navigation }) => {
   
   // Função para sincronizar os dados offline com o servidor
   const syncPostes = async () => {
-    db.transaction(tx => {
-      tx.executeSql('SELECT * FROM postes', [], (_, { rows }) => {
-        const postes = rows._array;
-        postes.forEach(async (poste) => {
-          const formData = new FormData();
-          formData.append('cidade', poste.cidade);
-          formData.append('bairro', poste.bairro);
-          formData.append('zonautm', poste.zonautm);
-          formData.append('localizacao_utm_x', poste.localizacao_utm_x);
-          formData.append('localizacao_utm_y', poste.localizacao_utm_y);
-          formData.append('observacoes', poste.observacoes);
-          
-          if (poste.fotoUri) {
-            const fileName = poste.fotoUri.split('/').pop();
-            const fileType = fileName.split('.').pop();
-            formData.append('foto', {
-              uri: poste.fotoUri,
-              name: fileName,
-              type: `image/${fileType}`,
-            });
-          }
+    const db = await SQLite.openDatabaseAsync('postes.db');
 
-          try {
-            const response = await enviarPosteParaServidor(formData);
-            if (response && response.status === 201) {
-              // Remove do SQLite após o envio com sucesso
-              db.transaction(tx => {
-                tx.executeSql('DELETE FROM postes WHERE id = ?', [poste.id],
-                  () => console.log("Poste sincronizado e removido offline:", poste.id),
-                  (_, error) => console.error("Erro ao remover poste offline:", error)
-                );
-              });
-            }
-          } catch (error) {
-            console.error("Erro ao sincronizar poste:", error);
+    console.log("Banco de dados aberto:", db);
+
+    try {
+      // Seleciona todos os postes com o status de sincronização pendente
+      const allRows = await db.getAllAsync('SELECT * FROM postes WHERE status_sync = 0');
+      for (const poste of allRows) {
+        const formData = new FormData();
+        formData.append('cidade', poste.cidade);
+        formData.append('bairro', poste.bairro);
+        formData.append('zonautm', poste.zonautm);
+        formData.append('localizacao_utm_x', poste.localizacao_utm_x);
+        formData.append('localizacao_utm_y', poste.localizacao_utm_y);
+        formData.append('observacoes', poste.observacoes);
+
+        if (poste.fotoUri) {
+          const fileName = poste.fotoUri.split('/').pop();
+          const fileType = fileName.split('.').pop();
+          formData.append('foto', {
+            uri: poste.fotoUri,
+            name: fileName,
+            type: `image/${fileType}`,
+          });
+        }
+
+        try {
+          const response = await enviarPosteParaServidor(formData);
+          if (response && response.status === 201) {
+            // Remove o poste do banco de dados local após a sincronização bem-sucedida
+            await db.runAsync('DELETE FROM postes WHERE id = ?', [poste.id]);
+            console.log("Poste sincronizado e removido offline:", poste.id);
           }
-        });
-      });
-    });
+        } catch (error) {
+          console.error("Erro ao sincronizar poste:", error);
+        }
+      }
+    } catch (error) {
+      console.error("Erro ao acessar o banco de dados:", error);
+    }
   };
+
 
   return (
     <View style={styles.container}>
