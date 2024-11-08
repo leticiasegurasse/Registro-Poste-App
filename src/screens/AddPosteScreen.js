@@ -149,6 +149,7 @@ const AddPosteScreen = ({ navigation }) => {
       });
 
       if (response.status === 201) {
+        navigation.navigate('Postes');
         Alert.alert('Sucesso', 'Poste adicionado com sucesso!');
       }
     } catch (error) {
