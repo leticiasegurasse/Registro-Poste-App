@@ -227,12 +227,26 @@ const AddPosteScreen = ({ navigation }) => {
         }
 
         try {
-          const response = await enviarPosteParaServidor(formData);
+          const token = await AsyncStorage.getItem('accessToken');
+
+          const response = await axios.post('http://104.236.241.235/api/postes/', formData, {
+            headers: {
+              Authorization: `Token ${token}`,
+              'Content-Type': 'multipart/form-data',
+            },
+          });
+
+          if (response.status === 201) {
+            navigation.navigate('Postes');
+            console.log('Poste adicionado com sucesso!');
+          }
+        
           if (response && response.status === 201) {
             // Remove o poste do banco de dados local após a sincronização bem-sucedida
             await db.runAsync('DELETE FROM postes WHERE id = ?', [poste.id]);
             console.log("Poste sincronizado e removido offline:", poste.id);
           }
+
         } catch (error) {
           console.error("Erro ao sincronizar poste:", error);
         }
