@@ -4,6 +4,8 @@ import { createStackNavigator } from '@react-navigation/stack';
 import LoginScreen from './src/screens/LoginScreen';
 import AddPosteScreen from './src/screens/AddPosteScreen';
 import PostesScreen from './src/screens/PostesScreen'
+import 'react-native-gesture-handler';
+
 
 const Stack = createStackNavigator();
 
