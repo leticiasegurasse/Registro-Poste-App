@@ -44,7 +44,7 @@ const AddPosteScreen = ({ navigation }) => {
   const fetchCidades = async () => {
     try {
       const token = await AsyncStorage.getItem('accessToken');
-      const response = await axios.get('http://104.236.241.235/api/cidades/', {
+      const response = await axios.get('https://postes.g2telecom.com.br/api/cidades/', {
         headers: { Authorization: `Token ${token}` },
       });
       setCidades(response.data);
@@ -58,7 +58,7 @@ const AddPosteScreen = ({ navigation }) => {
 
     try {
       const token = await AsyncStorage.getItem('accessToken');
-      const response = await axios.get(`http://104.236.241.235/api/cidades/${cidadeId}/bairros/`, {
+      const response = await axios.get(`https://postes.g2telecom.com.br/api/cidades/${cidadeId}/bairros/`, {
         headers: { Authorization: `Token ${token}` },
       });
       setBairros(response.data);
@@ -141,7 +141,7 @@ const AddPosteScreen = ({ navigation }) => {
     const token = await AsyncStorage.getItem('accessToken');
 
     try {
-      const response = await axios.post('http://104.236.241.235/api/postes/', formData, {
+      const response = await axios.post('https://postes.g2telecom.com.br/api/postes/', formData, {
         headers: {
           Authorization: `Token ${token}`,
           'Content-Type': 'multipart/form-data',
@@ -229,7 +229,7 @@ const AddPosteScreen = ({ navigation }) => {
         try {
           const token = await AsyncStorage.getItem('accessToken');
 
-          const response = await axios.post('http://104.236.241.235/api/postes/', formData, {
+          const response = await axios.post('https://postes.g2telecom.com.br/api/postes/', formData, {
             headers: {
               Authorization: `Token ${token}`,
               'Content-Type': 'multipart/form-data',

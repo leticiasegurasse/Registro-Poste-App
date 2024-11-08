@@ -9,7 +9,7 @@ const LoginScreen = ({ navigation }) => {
 
   const handleLogin = async () => {
     try {
-      const response = await axios.post('http://104.236.241.235/api/token/', {
+      const response = await axios.post('https://postes.g2telecom.com.br/api/token/', {
         username,
         password
       });

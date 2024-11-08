@@ -20,7 +20,7 @@ const UserPostesScreen = ({ navigation }) => {
         throw new Error('Refresh token não encontrado');
       }
 
-      const response = await axios.post('http://104.236.241.235/api/token/refresh/', {
+      const response = await axios.post('https://postes.g2telecom.com.br/api/token/refresh/', {
         refresh: refreshToken,
       });
 
@@ -42,7 +42,7 @@ const UserPostesScreen = ({ navigation }) => {
       let token = await AsyncStorage.getItem('accessToken');
 
       // Faz a requisição com o token de acesso atual
-      let response = await axios.get('http://104.236.241.235/api/postes/', {
+      let response = await axios.get('https://postes.g2telecom.com.br/api/postes/', {
         headers: {
           Authorization: `Token ${token}`,
         },
@@ -59,7 +59,7 @@ const UserPostesScreen = ({ navigation }) => {
         if (newAccessToken) {
           // Tenta novamente a requisição com o novo token
           try {
-            const response = await axios.get('http://104.236.241.235/api/postes/', {
+            const response = await axios.get('https://postes.g2telecom.com.br/api/postes/', {
               headers: {
                 Authorization: `Token ${newAccessToken}`,
               },
@@ -92,7 +92,7 @@ const UserPostesScreen = ({ navigation }) => {
           onPress: async () => {
             try {
               const token = await AsyncStorage.getItem('accessToken');
-              await axios.delete(`http://104.236.241.235/api/postes/${id}/`, {
+              await axios.delete(`https://postes.g2telecom.com.br/api/postes/${id}/`, {
                 headers: { Authorization: `Token ${token}` },
               });
               setPostes((prevPostes) => prevPostes.filter(poste => poste.id !== id));
