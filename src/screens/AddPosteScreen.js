@@ -199,7 +199,7 @@ const AddPosteScreen = ({ navigation }) => {
   
   // Função para sincronizar os dados offline com o servidor
   const syncPostes = async () => {
-    const db = await SQLite.openDatabaseAsync('postes.db');
+    const db = await SQLite.openDatabaseAsync('postes');
 
     console.log("Banco de dados aberto:", db);
 
