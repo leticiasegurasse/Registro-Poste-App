@@ -6,10 +6,51 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const UserPostesScreen = ({ navigation }) => {
   const [postes, setPostes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [cidades, setCidades] = useState([]);
+
 
   useEffect(() => {
     fetchUserPostes();
+  
+    const fetchCidades = async () => {
+      try {
+        const token = await AsyncStorage.getItem('accessToken');
+        const response = await axios.get('https://postes.g2telecom.com.br/api/cidades/', {
+          headers: {
+            Authorization: `Token ${token}`,
+          },
+        });
+        setCidades(response.data);
+      } catch (error) {
+        if (error.response && error.response.status === 401) {
+          // Token de acesso expirado ou inválido, tenta renovar o token
+          const newAccessToken = await refreshAccessToken();
+  
+          if (newAccessToken) {
+            // Tenta novamente a requisição com o novo token
+            try {
+              const response = await axios.get('https://postes.g2telecom.com.br/api/cidades/', {
+                headers: {
+                  Authorization: `Token ${newAccessToken}`,
+                },
+              });
+  
+              setPostes(response.data);
+            } catch (error) {
+              Alert.alert('Erro', 'Não foi possível carregar as cidades.');
+            }
+          } else {
+            Alert.alert('Erro', 'Autenticação falhou. Por favor, faça login novamente.');
+          }
+        } else {
+          Alert.alert('Erro', 'Não foi possível carregar as cidades.');
+        }  
+      }
+    };
+  
+    fetchCidades();
   }, []);
+  
 
   // Função para renovar o access token usando o refresh token
   const refreshAccessToken = async () => {
@@ -110,7 +151,9 @@ const UserPostesScreen = ({ navigation }) => {
   const renderItem = ({ item }) => (
     <View style={styles.posteContainer}>
       <Text style={styles.title}>Poste ID: {item.id}</Text>
-      <Text style={styles.description}>Cidade: {item.cidade}</Text>
+      <Text style={styles.description}>
+        Cidade: {cidades.find(cidade => cidade.id === item.cidade)?.nome || 'Cidade não encontrada'}
+      </Text>
       <Text style={styles.description}>Descrição: {item.descricao}</Text>
       <Button title="Remover" onPress={() => handleDeletePoste(item.id)} />
     </View>
